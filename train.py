@@ -105,7 +105,7 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
         m.train()
     # epoch size, training datayi bir kere process etmesi icin gereken step sayisi
     # zero division error for small datasets
-    epoch_size = 150#((len(data) // m.batch_size) - 1) // m.num_steps
+    epoch_size = ((len(data) // m.batch_size) - 1) // m.num_steps
     start_time = time.time()
     costs = 0.0
     iters = 0
@@ -171,14 +171,6 @@ def train(args):
     if args.SOS == "true":
         args.sos = '<s>'
         args.out_vocab_size += 1
-
-    # 'char, char-ngram, morpheme, word, or oracle'
-    args.unit = "char-ngram"
-    # none(word), addition, or bi-lstm'
-    args.composition = "addition"
-    # for char-ngrams only
-    args.ngram = 3
-    args.cont = "true"
 
     data_loader = TextLoader(args)
     train_data = data_loader.train_data
