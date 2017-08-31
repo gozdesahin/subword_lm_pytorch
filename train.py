@@ -14,7 +14,7 @@ from optimizer import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_file', type=str, default='data/train.txt',
+    parser.add_argument('--train_file', type=str, default='/media/isguderg/Work/Doktora/Data Sets/morfolojiData/eray/Morph.Dis.Train.Data.Deniz.Yuret.txt.sent',
                         help="training data")
     parser.add_argument('--dev_file', type=str, default='data/dev.txt',
                         help="development data")
@@ -145,7 +145,7 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
             optimizer.step()
             # report
             if (not eval) and step % (epoch_size // 10) == 10:
-                print(" perplexity: %.3f speed: %.0f wps" %
+                print("perplexity: %.3f speed: %.0f wps" %
                       ( np.exp(costs / iters),
                        iters * m.batch_size / (time.time() - start_time)))
 

@@ -344,8 +344,11 @@ class TextLoader:
         Replace special characters since we want to use them for
         the start and beginning of word symbols
         """
-        word = re.sub("\^", "¬", word)
-        word = re.sub("\$", "£", word)
+        try:
+            word = re.sub(u"\^", u"¬", word)
+            word = re.sub(u"\$", u"£", word)
+        except UnicodeDecodeError:
+            word = ''
         return word
 
     def read_dataset(self, filename):
