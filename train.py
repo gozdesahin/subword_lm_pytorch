@@ -145,8 +145,8 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
             optimizer.step()
             # report
             if (not eval) and step % (epoch_size // 10) == 10:
-                print("%.3f perplexity: %.3f speed: %.0f wps" %
-                      (step * 1.0 / epoch_size, np.exp(costs / iters),
+                print(" perplexity: %.3f speed: %.0f wps" %
+                      ( np.exp(costs / iters),
                        iters * m.batch_size / (time.time() - start_time)))
 
     # calculate perplexity
