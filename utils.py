@@ -26,6 +26,8 @@ class TextLoader:
         self.use_all_morphemes = True
         self.eos = args.eos
         self.sos = args.sos
+        # language
+        self.lang = args.lang
 
         self.words_vocab_file = os.path.join(self.save_dir, "words_vocab.pkl")
         if self.unit == "oracle":
@@ -345,6 +347,8 @@ class TextLoader:
         the start and beginning of word symbols
         """
         try:
+            if (self.lang=="tr") and (self.composition=="addition"):
+                word = re.sub(u"\^db", u"+db", word)
             word = re.sub(u"\^", u"¬", word)
             word = re.sub(u"\$", u"£", word)
         except UnicodeDecodeError:

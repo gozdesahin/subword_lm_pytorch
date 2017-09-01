@@ -14,9 +14,9 @@ from optimizer import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_file', type=str, default='/media/isguderg/Work/Doktora/Data Sets/morfolojiData/eray/Morph.Dis.Train.Data.Deniz.Yuret.txt.sent',
+    parser.add_argument('--train_file', type=str, default='data/train.morph',
                         help="training data")
-    parser.add_argument('--dev_file', type=str, default='data/dev.txt',
+    parser.add_argument('--dev_file', type=str, default='data/dev.morph',
                         help="development data")
     parser.add_argument('--output_vocab_file', type=str, default='',
                         help="vocab file, only use this if you want to specify special output vocabulary!")
@@ -83,6 +83,8 @@ def main():
                         help='continue training')
     parser.add_argument('--seed', type=int, default=0,
                         help='seed for random initialization')
+    parser.add_argument('--lang', type=str, default='tr',
+                        help='Language (others|tr)')
     args = parser.parse_args()
     # check cuda
     use_cuda = torch.cuda.is_available()
@@ -144,7 +146,7 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
             loss.backward()
             optimizer.step()
             # report
-            if (not eval) and step % (epoch_size // 10) == 10:
+            if (not eval): #and step % (epoch_size // 10) == 10:
                 print("perplexity: %.3f speed: %.0f wps" %
                       ( np.exp(costs / iters),
                        iters * m.batch_size / (time.time() - start_time)))
