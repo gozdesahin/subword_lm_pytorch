@@ -61,19 +61,20 @@ def parse_morph_dis(fin, fout, START_TAG=u'<S>',END_TAG=u'</S>',SEP=u' '):
                 continue
             else:
                 sent.append(wrd)
-                sent_morph.append(correct_tag)
+                morphanalysis = "word:"+wrd+"+lemma:"+correct_tag
+                sent_morph.append(morphanalysis)
     print "Number of sentences ",sentcnt
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fin', type=str, default='/media/isguderg/Work/Doktora/Data Sets/LMSet_Clean/allData_new.cln',
+    parser.add_argument('--fin', type=str, default='data/originalMD.txt',
                         help="Raw clean text")
-    parser.add_argument('--fout', type=str, default='/media/isguderg/Work/Doktora/Data Sets/LMSet_Clean/reduced.txt',
+    parser.add_argument('--fout', type=str, default='data/originalMD.morph',
                         help="Out file with reduced set of sentences")
     parser.add_argument('--maxlen', type=int, default=30,
                         help="Max length of a word in a sentence")
-    parser.add_argument('--op', type=int, default=1,
+    parser.add_argument('--op', type=int, default=2,
                         help="1=reduce, 2=parse morph disamb")
 
     args = parser.parse_args()
