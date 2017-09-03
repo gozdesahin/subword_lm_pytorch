@@ -14,9 +14,9 @@ from optimizer import *
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_file', type=str, default='data/train.morph',
+    parser.add_argument('--train_file', type=str, default='data/train.txt',
                         help="training data")
-    parser.add_argument('--dev_file', type=str, default='data/dev.morph',
+    parser.add_argument('--dev_file', type=str, default='data/dev.txt',
                         help="development data")
     parser.add_argument('--output_vocab_file', type=str, default='',
                         help="vocab file, only use this if you want to specify special output vocabulary!")
@@ -115,7 +115,13 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
     m.lm_hidden = m.init_hidden(m.num_layers)
     for step, (x, y) in enumerate(data_loader.data_iterator(data, m.batch_size, m.num_steps)):
         # make them matrix
-        x = torch.FloatTensor(x).type(m.dtype)
+        # x can be values, x can be indices
+        if data_loader.composition=="bi-lstm": # indices are returned
+            x = torch.LongTensor(x).type(m.otype)
+        elif ((data_loader.composition=="addition") or \
+              (data_loader.composition=="none")):
+            x = torch.FloatTensor(x).type(m.dtype)
+        # y is always indices
         y = torch.LongTensor(y).type(m.otype)
         # move input tensors to gpu if possible
         if m.use_cuda:
@@ -131,6 +137,8 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
         # Or shall I initialize them with their previous value by detaching them from their history
         # tensorflow code initialized with previous state and they don't have the history problem
         m.lm_hidden = repackage_hidden(m.lm_hidden)
+        if data_loader.composition=="bi-lstm":
+            m.comp_hidden = repackage_hidden(m.comp_hidden)
         #m.lm_hidden = m.init_hidden(m.num_layers)
         log_probs = m(x_var)
         training_labels = y_var.view(log_probs.size(0))
@@ -173,6 +181,16 @@ def train(args):
     if args.SOS == "true":
         args.sos = '<s>'
         args.out_vocab_size += 1
+
+    local_test = False
+    if local_test:
+        # Gozde
+        # char, char-ngram, morpheme, word, or oracle
+        args.unit = "oracle"
+        args.composition = "bi-lstm"
+        args.train_file = "data/train.morph"
+        args.dev_file = "data/dev.morph"
+        # End of test
 
     data_loader = TextLoader(args)
     train_data = data_loader.train_data
