@@ -154,7 +154,7 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
             loss.backward()
             optimizer.step()
             # report
-            if (not eval): #and step % (epoch_size // 10) == 10:
+            if not eval and step % (epoch_size // 10) == 10:
                 print("perplexity: %.3f speed: %.0f wps" %
                       ( np.exp(costs / iters),
                        iters * m.batch_size / (time.time() - start_time)))
