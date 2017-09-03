@@ -112,14 +112,16 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
     costs = 0.0
     iters = 0
     crit = lossCriterion(data_loader.out_vocab_size)
-    m.lm_hidden = m.init_hidden(m.num_layers)
+    m.lm_hidden = m.init_hidden(m.num_layers,numdirec=1, batchsize=m.batch_size)
+    if data_loader.composition == "bi-lstm":
+        m.comp_hidden = m.init_hidden(1, numdirec=2, batchsize=m.batch_size)
     for step, (x, y) in enumerate(data_loader.data_iterator(data, m.batch_size, m.num_steps)):
         # make them matrix
         # x can be values, x can be indices
-        if data_loader.composition=="bi-lstm": # indices are returned
+        if (data_loader.composition=="bi-lstm") or \
+                (data_loader.composition == "none"): # indices are returned
             x = torch.LongTensor(x).type(m.otype)
-        elif ((data_loader.composition=="addition") or \
-              (data_loader.composition=="none")):
+        elif data_loader.composition=="addition": # values are returned
             x = torch.FloatTensor(x).type(m.dtype)
         # y is always indices
         y = torch.LongTensor(y).type(m.otype)
@@ -190,6 +192,7 @@ def train(args):
         args.composition = "bi-lstm"
         args.train_file = "data/train.morph"
         args.dev_file = "data/dev.morph"
+        args.batch_size = 12
         # End of test
 
     data_loader = TextLoader(args)
