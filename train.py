@@ -114,7 +114,7 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
     crit = lossCriterion(data_loader.out_vocab_size)
     m.lm_hidden = m.init_hidden(m.num_layers,numdirec=1, batchsize=m.batch_size)
     if data_loader.composition == "bi-lstm":
-        m.comp_hidden = m.init_hidden(1, numdirec=2, batchsize=m.batch_size)
+        m.comp_hidden = m.init_hidden(1, numdirec=2, batchsize=(m.batch_size*m.num_steps))
     for step, (x, y) in enumerate(data_loader.data_iterator(data, m.batch_size, m.num_steps)):
         # make them matrix
         # x can be values, x can be indices
