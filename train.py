@@ -113,15 +113,17 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
     iters = 0
     crit = lossCriterion(data_loader.out_vocab_size)
     m.lm_hidden = m.init_hidden(m.num_layers,numdirec=1, batchsize=m.batch_size)
-    if data_loader.composition == "bi-lstm":
+    if data_loader.composition == "bi-lstm" or data_loader.composition == "add-bi-lstm":
         m.comp_hidden = m.init_hidden(1, numdirec=2, batchsize=(m.batch_size*m.num_steps))
+
     for step, (x, y) in enumerate(data_loader.data_iterator(data, m.batch_size, m.num_steps)):
         # make them matrix
         # x can be values, x can be indices
         if (data_loader.composition=="bi-lstm") or \
                 (data_loader.composition == "none"): # indices are returned
             x = torch.LongTensor(x).type(m.otype)
-        elif data_loader.composition=="addition": # values are returned
+        elif data_loader.composition=="addition" or \
+                (data_loader.composition == "add-bi-lstm"): # values are returned
             x = torch.FloatTensor(x).type(m.dtype)
         # y is always indices
         y = torch.LongTensor(y).type(m.otype)
@@ -139,7 +141,7 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
         # Or shall I initialize them with their previous value by detaching them from their history
         # tensorflow code initialized with previous state and they don't have the history problem
         m.lm_hidden = repackage_hidden(m.lm_hidden)
-        if data_loader.composition=="bi-lstm":
+        if data_loader.composition=="bi-lstm" or data_loader.composition=="add-bi-lstm":
             m.comp_hidden = repackage_hidden(m.comp_hidden)
         #m.lm_hidden = m.init_hidden(m.num_layers)
         log_probs = m(x_var)
@@ -188,8 +190,8 @@ def train(args):
     if local_test:
         # Gozde
         # char, char-ngram, morpheme, word, or oracle
-        args.unit = "oracle"
-        args.composition = "bi-lstm"
+        args.unit = "oracle-db"
+        args.composition = "add-bi-lstm"
         args.train_file = "data/train.morph"
         args.dev_file = "data/dev.morph"
         args.batch_size = 12
@@ -225,6 +227,10 @@ def train(args):
                 args.bilstm_num_steps = data_loader.max_morph_per_word
             else:
                 sys.exit("Wrong unit.")
+        elif args.composition == "add-bi-lstm":
+            fout.write("Maximum db per word: " + str(data_loader.max_db_per_word) + "\n")
+            fout.write("Maximum morph per db: " + str(data_loader.max_morph_per_db) + "\n")
+            args.bilstm_num_steps = data_loader.max_db_per_word
         elif args.composition == "addition":
             if args.unit not in ["char-ngram", "morpheme", "oracle"]:
                 sys.exit("Wrong composition.")
@@ -244,6 +250,8 @@ def train(args):
         lm_model = AdditiveModel
     elif args.composition == "bi-lstm":
         lm_model = BiLSTMModel
+    elif args.composition == "add-bi-lstm":
+        lm_model = AddBiLSTMModel
     else:
         sys.exit("Unknown unit or composition.")
 

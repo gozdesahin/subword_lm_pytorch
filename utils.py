@@ -53,6 +53,14 @@ class TextLoader:
             self.max_ngram_per_word = 0
             self.ngram_to_id = dict()
             self.unk_ngram_list = set()
+        # db: derivational boundary
+        # maximum derivations per word
+        # maximum morphemes per derivational boundary
+        if self.unit == "oracle-db":
+            self.max_morph_per_db = 0
+            self.max_db_per_word = 0
+            self.morpheme_to_id = dict()
+            self.unk_morph_list = set()
 
         self.output_vocab = {}
         self.unk_list = set()
@@ -93,6 +101,25 @@ class TextLoader:
             tmp.extend([element for element in arr[:max_len]])
         return tmp
 
+    # pad with vector
+    def binpadding(self, arr, max_len, vec):
+        """
+        Padding a vector of characters or words
+        :param arr: array to be padded
+        :param start: start symbol, ex: <w> for character sequence
+        :param end: end symbol
+        :param max_len: maximum length for padding
+        :param vocab: vocabulary to get the indexes of start, end, and PAD symbols
+        :return:
+        """
+        tmp = []
+        if len(arr) <= max_len:
+            tmp.extend([element for element in arr])
+            tmp.extend([vec for _ in range(max_len - len(arr))])
+        else:
+            tmp.extend([element for element in arr[:max_len]])
+        return tmp
+
     def preprocess(self):
         """
         Preprocess dataset and build vocabularies
@@ -118,6 +145,8 @@ class TextLoader:
             self.preprocess_morpheme()
         elif self.unit == "oracle":
             self.preprocess_oracle()
+        elif self.unit == "oracle-db":
+            self.preprocess_oracle_db()
         else:
             sys.exit("Unknown unit")
 
@@ -165,6 +194,16 @@ class TextLoader:
         with open(self.sub_vocab_file, 'wb') as f:
             pickle.dump((self.morpheme_to_id, self.max_morph_per_word), f)
 
+    def preprocess_oracle_db(self):
+        """
+        Preprocess for derivational morphology
+        Subwords are again morphemes, they are just composed differently
+        """
+        self.morpheme_to_id, self.max_db_per_word, self.max_morph_per_db = self.build_oracle_db_vocab()
+        self.subword_vocab_size = len(self.morpheme_to_id)
+        with open(self.sub_vocab_file, 'wb') as f:
+            pickle.dump((self.morpheme_to_id, self.max_db_per_word, self.max_morph_per_db), f)
+
     def load_preprocessed(self):
         """
         Load preprocessed dictionaries, this is called during testing.
@@ -189,6 +228,9 @@ class TextLoader:
                     self.subword_vocab_size = len(self.morpheme_to_id)
                 elif self.unit == "oracle":
                     self.morpheme_to_id, self.max_morph_per_word = pickle.load(f)
+                    self.subword_vocab_size = len(self.morpheme_to_id)
+                elif self.unit == "oracle-db":
+                    self.morpheme_to_id, self.max_db_per_word, self.max_morph_per_db = pickle.load(f)
                     self.subword_vocab_size = len(self.morpheme_to_id)
                 else:
                     sys.exit("Unknown unit")
@@ -341,6 +383,45 @@ class TextLoader:
                             morpheme_dict[morpheme] = len(morpheme_dict)
         return morpheme_dict, max_morph_per_word
 
+    def build_oracle_db_vocab(self):
+        max_morph_per_db = 0
+        max_db_per_word = 0
+        morpheme_dict = dict()
+
+        morpheme_dict['<unk>'] = len(morpheme_dict)
+        morpheme_dict['<PAD>'] = len(morpheme_dict)
+        if self.eos != '':
+            morpheme_dict[self.eos] = len(morpheme_dict)
+        if self.sos != '':
+            morpheme_dict[self.sos] = len(morpheme_dict)
+
+        dersplitter = "+db+"
+        infsplitter = "+"
+        for token in self.train_data:
+            if token == self.eos or token == self.sos:
+                continue
+            derbounds = token.split(dersplitter)
+            if(len(derbounds) > max_db_per_word):
+                max_db_per_word = len(derbounds)
+
+            for derivation,dcnt in zip(derbounds,xrange(len(derbounds))):
+                morphemes = derivation.split(infsplitter)
+                nummorph = len(morphemes) if dcnt>0 else len(morphemes)-1
+                if nummorph > max_morph_per_db:
+                    max_morph_per_db = nummorph
+                for morpheme in morphemes:
+                    if "word:" in morpheme:
+                        # remove the word form
+                        continue
+                    if self.use_all_morphemes:
+                        if morpheme not in morpheme_dict:
+                            morpheme_dict[morpheme] = len(morpheme_dict)
+                    else:
+                        if "lemma:" in morpheme or "pos:" in morpheme or "stem:" in morpheme:
+                            if morpheme not in morpheme_dict:
+                                morpheme_dict[morpheme] = len(morpheme_dict)
+        return morpheme_dict, max_db_per_word, max_morph_per_db
+
     def replace_special_chars(self, word):
         """
         Replace special characters since we want to use them for
@@ -365,14 +446,14 @@ class TextLoader:
         with codecs.open(filename, mode='r', encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
-                if self.lowercase or self.unit == "oracle":
+                if self.lowercase or self.unit == "oracle" or self.unit == "oracle-db":
                     line = line.lower()
                 if self.sos != '':
                     data.append(self.sos)
                 for word in line.split():
                     word = self.replace_special_chars(word)
                     _word = word
-                    if self.unit == "oracle":
+                    if self.unit == "oracle" or self.unit == "oracle-db":
                         if "+" in word:
                             _word = word.split('+')[0].split(":")[1]
                     if self.unit == "morpheme":
@@ -393,10 +474,10 @@ class TextLoader:
         # the data since the word lookup table is for target words which are
         # always in lowercase.
         data = self.train_data
-        if not self.lowercase or self.unit == "oracle":
+        if not self.lowercase or self.unit == "oracle" or self.unit == "oracle-db":
             tmp_data = []
             for word in data:
-                if self.unit == "oracle":
+                if self.unit == "oracle" or self.unit == "oracle-db":
                     if '+' in word:
                         tags = word.split('+')
                         word_tag = tags[0].split(':')
@@ -469,7 +550,7 @@ class TextLoader:
         _buffer = list()
         for word in input_data:
             word = word.lower()
-            if self.unit == "oracle":
+            if self.unit == "oracle" or self.unit == "oracle-db":
                 if "+" in word:
                     tokens = word.split('+')
                     word_tag = tokens[0].split(':')
@@ -541,6 +622,38 @@ class TextLoader:
                         encoding[self.morpheme_to_id['<unk>']] = 1
         return encoding
 
+    # Only for oracle-db
+    def create_binary_morpheme_vectors(self, word):
+        """
+        Encode word into a binary vectors of morphemes
+        :param word: input word
+        :return: a vector unit of the input word/list of vector units
+        """
+        dimension = len(self.morpheme_to_id)
+        encodingVec = []
+        if word == self.eos or word == self.sos:
+            encodingVec = [np.zeros(dimension)]
+            encodingVec[0][self.morpheme_to_id[word]] = 1
+        else:
+            derbounds = word.split("+db+")
+            for derivation in derbounds:
+                morphemes = derivation.split("+")
+                encoding = np.zeros(dimension)
+                for morpheme in morphemes:
+                    if "word:" in morpheme:
+                        # remove the word form
+                        continue
+                    if morpheme in self.morpheme_to_id:
+                        if self.use_all_morphemes:
+                            encoding[self.morpheme_to_id[morpheme]] = 1
+                        else:
+                            if "lemma:" in morpheme or "pos:" in morpheme or "stem:" in morpheme:
+                                encoding[self.morpheme_to_id[morpheme]] = 1
+                    else:
+                        encoding[self.morpheme_to_id['<unk>']] = 1
+                encodingVec.append(encoding)
+        return encodingVec
+
     def word_to_morphemes(self, word):
         """
         Encode word into a vector of its morpheme ids
@@ -593,6 +706,10 @@ class TextLoader:
         for word in data:
             if self.composition == "addition":
                 _buffer.append(self.create_binary_morpheme_vector(word))
+            elif self.composition == "add-bi-lstm":
+                morphvectors = self.create_binary_morpheme_vectors(word)
+                padvector = np.zeros(len(self.morpheme_to_id))
+                _buffer.append(self.binpadding(morphvectors, self.max_db_per_word, padvector))
             elif self.composition == "bi-lstm":
                 morphemes = self.word_to_morphemes(word)
                 _buffer.append(self.padding(morphemes, self.max_morph_per_word,
@@ -717,7 +834,7 @@ class TextLoader:
             data = self.char_encoding(data)
         elif self.unit == "char-ngram":
             data = self.ngram_encoding(data)
-        elif self.unit == "morpheme" or self.unit == "oracle":
+        elif self.unit == "morpheme" or self.unit == "oracle" or self.unit == "oracle-db":
             data = self.morpheme_encoding(data)
         else:
             data = self.data_to_word_ids(data, False)
