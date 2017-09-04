@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--model', type=str, default='lstm',
                         help='rnn, gru, or lstm')
     parser.add_argument('--unit', type=str, default='char-ngram',
-                        help='char, char-ngram, morpheme, word, or oracle')
+                        help='char, char-ngram, morpheme, word, oracle or oracle-db')
     parser.add_argument('--composition', type=str, default='addition',
                         help='none(word), addition, or bi-lstm')
     parser.add_argument('--lowercase', dest='lowercase', action='store_true',

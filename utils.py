@@ -347,7 +347,7 @@ class TextLoader:
         the start and beginning of word symbols
         """
         try:
-            if (self.lang=="tr") and (self.composition=="addition"):
+            if (self.lang=="tr"):
                 word = re.sub(u"\^db", u"+db", word)
             word = re.sub(u"\^", u"¬", word)
             word = re.sub(u"\$", u"£", word)
