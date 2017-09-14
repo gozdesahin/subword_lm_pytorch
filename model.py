@@ -42,9 +42,6 @@ class AdditiveModel(nn.Module):
 
         # Language model is one direction lstm
         # Input is a binary vector of size subword_vocab_size
-        # We don't learn an embedding for each subword...
-        # Change it in the future ??
-        # apply the dropout operator only to the non-recurrent connections: Zaremba
         self.lm_lstm = nn.LSTM(subword_vocab_size, \
                                self.rnn_size, \
                                num_layers=args.num_layers,\
@@ -95,8 +92,9 @@ class AdditiveModel(nn.Module):
                 bias.data[start:end].fill_(value)
 
     def forward(self, batch):
-        # input dropout - not sure about that
+        # input dropout
         word_embeds = self.dropout(batch)
+        # input without dropout
         #word_embeds = batch
         lstm_out, self.lm_hidden = self.lm_lstm(word_embeds, self.lm_hidden)
         lstm_out = lstm_out.contiguous()
@@ -112,15 +110,11 @@ class WordModel(nn.Module):
         self.batch_size = batch_size = args.batch_size
         self.num_steps = num_steps = args.num_steps
         self.model = model = args.model
-
         self.unit = args.unit
-
         self.dtype = args.dtype
         self.otype = args.otype
         self.use_cuda = args.use_cuda
         self.num_layers = args.num_layers
-
-
         self.word_dim = args.word_dim
         self.rnn_size = args.rnn_size
         self.word_vocab_size = args.word_vocab_size
@@ -303,6 +297,9 @@ class BiLSTMModel(nn.Module):
         word_scores = F.log_softmax(wordvec_space)
         return word_scores
 
+# 04.09.2017
+# BiLSTM composition over derivation subwords which are composed by addition
+# Slow and experimental
 class AddBiLSTMModel(nn.Module):
     def __init__(self, args, is_testing=False):
         super(AddBiLSTMModel, self).__init__()

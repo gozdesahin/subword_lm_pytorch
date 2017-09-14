@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# Author: Clara Vania
+# Author: Gozde Sahin
+# Code is based on Clara Vania'a subword-lstm-lm project
 import numpy as np
 import argparse
 import time
@@ -83,8 +84,8 @@ def main():
                         help='continue training')
     parser.add_argument('--seed', type=int, default=0,
                         help='seed for random initialization')
-    parser.add_argument('--lang', type=str, default='tr',
-                        help='Language (others|tr)')
+    parser.add_argument('--lang', type=str, default='en',
+                        help='Language (en|tr)')
     args = parser.parse_args()
     # check cuda
     use_cuda = torch.cuda.is_available()
@@ -105,8 +106,6 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
         m.eval()
     else:
         m.train()
-    # epoch size, training datayi bir kere process etmesi icin gereken step sayisi
-    # zero division error for small datasets
     epoch_size = ((len(data) // m.batch_size) - 1) // m.num_steps
     start_time = time.time()
     costs = 0.0
@@ -137,21 +136,13 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
         y_var = Variable(y, volatile=eval)
         # zero the gradients
         m.zero_grad()
-        # Shall I initialize them with zero after each sequence of length number of steps - (e.g. 20)
-        # Or shall I initialize them with their previous value by detaching them from their history
-        # tensorflow code initialized with previous state and they don't have the history problem
         m.lm_hidden = repackage_hidden(m.lm_hidden)
         if data_loader.composition=="bi-lstm" or data_loader.composition=="add-bi-lstm":
             m.comp_hidden = repackage_hidden(m.comp_hidden)
-        #m.lm_hidden = m.init_hidden(m.num_layers)
         log_probs = m(x_var)
         training_labels = y_var.view(log_probs.size(0))
         loss = crit(log_probs, training_labels).div(m.batch_size)
-        # stupid vector -> value transformations, waste of time!
         costs += loss.data[0]
-        # in tutorial they multiply it by the number of steps ?
-        # costs += loss.data[0] * model.num_steps
-        # however I give size_average=False parameter, so not sure ?
         iters += m.num_steps
         if not eval:
             # go backwards and update weights
@@ -162,7 +153,6 @@ def run_epoch(m, data, data_loader, optimizer, eval=False):
                 print("perplexity: %.3f speed: %.0f wps" %
                       ( np.exp(costs / iters),
                        iters * m.batch_size / (time.time() - start_time)))
-
     # calculate perplexity
     # this is cost per word
     cost_norm = (costs/iters)

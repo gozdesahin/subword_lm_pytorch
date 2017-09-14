@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # Author: Clara Vania
+# Note: Code is modified by Gozde Sahin to process derivational morphology
 
 import numpy as np
 import os

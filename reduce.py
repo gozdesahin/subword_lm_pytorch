@@ -25,10 +25,11 @@ def reduce_dataset(fin, fout, max_allowed_word_len=30):
                 output.write(line+'\n')
     print "Number of lines ",lncnt
 
-# parse morphologically disambiguated
+
 def parse_morph_dis(fin, fout, START_TAG=u'<S>',END_TAG=u'</S>',SEP=u' '):
     """
-    Parse MD dataset - save as sentences
+    Parse MD dataset - save as sentences to fout,
+    Save as the oracle format to fout.morph
     :param fin: file to read
     :param fout: file to write
     :param START_TAG='<S>': sentence start
